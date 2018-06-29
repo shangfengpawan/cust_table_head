@@ -3,7 +3,7 @@
  */
 'use strict';
 
-app.directive('custTable',function () {
+app.directive('custTable',['homeSrv',function (homeSrv) {
    return {
        restrict: 'E',
        replace: true,
@@ -11,9 +11,8 @@ app.directive('custTable',function () {
        templateUrl: 'cust_table_head/partials/custTable.html',
        link: function link(scope, ele) {
            console.log("custTable directive");
-           var tabDiv = ele.find("#custTable");
-           tabDiv.CTHead();
+           homeSrv.notifyCallBack("initCTHead",ele);
        }
    }
-});
+}]);
 

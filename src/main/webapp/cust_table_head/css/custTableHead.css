@@ -52,8 +52,8 @@
 }
 .headdiv{
     line-height: 100%;
-    /*padding:8px;*/
-    vertical-align:middle;
+    padding:8px;
+    /*vertical-align:middle;*/
     /*float: center;*/
 }
 .img-left{
@@ -75,3 +75,6 @@
 .cust-tab .mb10{
     margin-bottom: 10px;
 }
+
+#ct th.ui-selecting { background: #40adfe; }
+#ct th.ui-selected  { background: #3e8dde; }
