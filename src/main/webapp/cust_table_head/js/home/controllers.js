@@ -5,6 +5,116 @@ app.controller('homeCtrl', ['$rootScope','$scope', '$compile','$window','$timeou
 
     };
 
+    $scope.tabIndex = 0;
+
+    var dataList = [
+        [
+            {
+                colId:1,
+                colValue:2312
+            },
+            {
+                colId:2,
+                colValue:2362
+            },
+            {
+                colId:3,
+                colValue:2352
+            },
+            {
+                colId:4,
+                colValue:2432
+            },
+            {
+                colId:5,
+                colValue:2332
+            },
+            {
+                colId:6,
+                colValue:2322
+            }
+        ],
+        [
+            {
+                colId:1,
+                colValue:2312
+            },
+            {
+                colId:2,
+                colValue:2362
+            },
+            {
+                colId:3,
+                colValue:2352
+            },
+            {
+                colId:4,
+                colValue:2432
+            },
+            {
+                colId:5,
+                colValue:2332
+            },
+            {
+                colId:6,
+                colValue:2322
+            }
+        ],
+        [
+            {
+                colId:1,
+                colValue:2312
+            },
+            {
+                colId:2,
+                colValue:2362
+            },
+            {
+                colId:3,
+                colValue:2352
+            },
+            {
+                colId:4,
+                colValue:2432
+            },
+            {
+                colId:5,
+                colValue:2332
+            },
+            {
+                colId:6,
+                colValue:2322
+            }
+        ],
+        [
+            {
+                colId:1,
+                colValue:2312
+            },
+            {
+                colId:2,
+                colValue:2362
+            },
+            {
+                colId:3,
+                colValue:2352
+            },
+            {
+                colId:4,
+                colValue:2432
+            },
+            {
+                colId:5,
+                colValue:2332
+            },
+            //{
+            //    colId:6,
+            //    colValue:2322
+            //}
+        ]
+
+    ];
+
     $scope.initCTHead = function(ele){
         //var headSetting = [
         //    {
@@ -172,7 +282,7 @@ app.controller('homeCtrl', ['$rootScope','$scope', '$compile','$window','$timeou
                 },
                 colInfo:{
                     orderNo:0,
-                    colId:"1",
+                    colId:"2",
                     colName:"第二列",
                     isHide:"1"
                 }
@@ -189,7 +299,7 @@ app.controller('homeCtrl', ['$rootScope','$scope', '$compile','$window','$timeou
                 },
                 colInfo:{
                     orderNo:0,
-                    colId:"1",
+                    colId:"3",
                     colName:"第三列",
                     isHide:"1"
                 }
@@ -206,7 +316,7 @@ app.controller('homeCtrl', ['$rootScope','$scope', '$compile','$window','$timeou
                 },
                 colInfo:{
                     orderNo:0,
-                    colId:"1",
+                    colId:"4",
                     colName:"第四列",
                     isHide:"1"
                 }
@@ -223,7 +333,7 @@ app.controller('homeCtrl', ['$rootScope','$scope', '$compile','$window','$timeou
                 },
                 colInfo:{
                     orderNo:0,
-                    colId:"1",
+                    colId:"5",
                     colName:"第五列",
                     isHide:"1"
                 }
@@ -240,17 +350,26 @@ app.controller('homeCtrl', ['$rootScope','$scope', '$compile','$window','$timeou
                 },
                 colInfo:{
                     orderNo:0,
-                    colId:"1",
+                    colId:"6",
                     colName:"第六列",
                     isHide:"1"
                 }
             }
         ];
-        var tabDiv = ele.find("#custTable");
-        tabDiv.CTHead(headSetting);
+
+
+        var tabDiv = ele.find(".custTableBase");
+        tabDiv.CTHead("tb"+$scope.tabIndex,headSetting);
+        tabDiv.CTLoadData("tb"+$scope.tabIndex,dataList);
+        $scope.tabIndex++;
     };
 
     homeSrv.registerCallBack($scope.initCTHead,"initCTHead");
+
+    $scope.loadData = function () {
+        var tabDiv =$("#table1").find(".custTableBase");
+        tabDiv.CTLoadData("tb0",dataList);
+    };
 
     $scope.homeInit();
 

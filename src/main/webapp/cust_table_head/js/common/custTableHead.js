@@ -6,11 +6,19 @@
     if (typeof jQuery !== 'undefined' && jQuery.fn.extend) {
         jQuery.fn.extend({
             //初始化调用
-            CTHead: function CTHead(headSetting) {
-                init(this,headSetting);
+            CTHead: function CTHead(ct_name,headSetting) {
+                init(this,ct_name,headSetting);
             },
-            CTLoadData:function CTLoadData(param){
-                loadData(param);
+            CTLoadData:function CTLoadData(ct_name,dataList){
+                loadData(ct_name,dataList);
+            },
+            CTGetHeadSetting: function (ct_name) {
+                var ret = null;
+                var ctInfo = getCTInfo(ct_name);
+                if(ctInfo != null){
+                    ret = JSON.parse(JSON.stringify(ctInfo.ct_headSetting));
+                }
+                return ret;
             }
 
 
@@ -18,6 +26,32 @@
     }
 })();
 
+var ct_list = [];
+
+var saveCTList = function (ctInfo) {
+    var isExist = false;
+    for(var i=0;i<ct_list.length;i++){
+        if(ctInfo.ct_name == ct_list[i].ct_name){
+            isExist = true;
+            ct_list[i] = ctInfo;
+        }
+    }
+
+    if(!isExist){
+        ct_list.push(ctInfo);
+    }
+
+};
+
+var getCTInfo = function (ct_name) {
+    var ret = null;
+    for(var i=0;i<ct_list.length;i++){
+        if(ct_list[i].ct_name == ct_name){
+            ret = ct_list[i];
+        }
+    }
+    return ret;
+};
 
 var ct_ele;
 var ct_headSetting = [];
@@ -109,15 +143,24 @@ var reBuildHeadSetting = function (currHeadSetting, currLevel,mergerInfo,mergeHe
 
 };
 
-function setMergeHead(){
-    var str=prompt("合并表头标题","");
+function setMergeHead(tmp){
+    if(tmp == undefined){
+        tmp = "";
+    }
+    var str=prompt("合并表头标题",tmp);
     return str;
 }
 
-var mergerHead = function () {
+var mergerHead = function (ct_name) {
+    var ctInfo = getCTInfo(ct_name);
+    if(ctInfo ==null){
+        return;
+    }
+    ct_ele = ctInfo.ct_ele;
+
     var selectedHead = [];
     //获取 需要合并的 表头的 level 和 orderNo
-    var tds = $("th", $("#ct"));
+    var tds = $("th", ct_ele.find(".ct"));
     tds.filter(".ui-selected").each(function(){
         var currLevel = $(this).attr("currLevel");
         var orderNo = $(this).attr("orderNo");
@@ -153,7 +196,7 @@ var mergerHead = function () {
         alert("请选择同一层级单元格进行合并");
         return 0;
     }
-    if(tmpLevel != ct_headSetting[0].currLevel){
+    if(parseInt(tmpLevel) != ctInfo.ct_headSetting[0].currLevel){
         alert("请选择顶层单元格进行合并，否则请还原后重新设计表头");
         return 0;
     }
@@ -165,9 +208,12 @@ var mergerHead = function () {
     }
 
     //重新计算合并后的json对象
-    ct_headSetting = reBuildHeadSetting(ct_headSetting,ct_headSetting[0].currLevel,selectedHead,mergeHeadName);
+    ct_headSetting = reBuildHeadSetting(ctInfo.ct_headSetting,ctInfo.ct_headSetting[0].currLevel,selectedHead,mergeHeadName);
 
-    init(ct_ele,ct_headSetting);
+    ctInfo.ct_headSetting = ct_headSetting;
+    saveCTList(ctInfo);
+
+    reFresh(ct_ele,ct_name,ct_headSetting);
 
 };
 
@@ -190,14 +236,20 @@ var getInitHeadSetting = function (headSetting,targetSetting) {
     return targetSetting;
 };
 
-var resetHead = function () {
+var resetHead = function (ct_name) {
+
+    var ctInfo = getCTInfo(ct_name);
+    if(ctInfo ==null){
+        return;
+    }
+    ct_ele = ctInfo.ct_ele;
 
     var retValue = confirm("确定要还原表头吗？");
     if(!retValue){
         return 0;
     }
     var tmpHead = [];
-    ct_headSetting = getInitHeadSetting(ct_headSetting,tmpHead);
+    ct_headSetting = getInitHeadSetting(ctInfo.ct_headSetting,tmpHead);
     for(var i=0;i<ct_headSetting.length;i++){
         ct_headSetting[i].currLevel=0;
         ct_headSetting[i].orderNo = i;
@@ -205,20 +257,131 @@ var resetHead = function () {
         ct_headSetting[i].headInfo.rowspanNum = 1;
     }
 
-    init(ct_ele,ct_headSetting);
+    ctInfo.ct_headSetting = ct_headSetting;
+    saveCTList(ctInfo);
+
+    reFresh(ct_ele,ct_name,ct_headSetting);
 };
 
-var bindEvent = function () {
-    $('#ct-merger').unbind("click");
-    $('#ct-merger').click(function() {
-        console.log("merger click");
-        mergerHead();
-    });
-    $('#ct-reset').unbind("click");
-    $('#ct-reset').click(function() {
-        console.log("reset click");
-        resetHead();
-    });
+var modifyHeadName = function (headSetting,currLevel, orderNo, newName) {
+
+    if(headSetting.length == 0){
+        return headSetting;
+    }
+    for(var i=0;i<headSetting.length;i++){
+        if(headSetting[i].currLevel == currLevel) {
+            if (headSetting[i].orderNo == orderNo) {
+                headSetting[i].headInfo.headName = newName;
+                if(headSetting[i].colInfo != null){
+                    headSetting[i].colInfo.colName = newName;
+                }
+
+            }
+        }else{
+            headSetting[i] = modifyHeadName(headSetting[i].nextLevelInfo,currLevel,orderNo,newName);
+        }
+    }
+
+    return headSetting;
+};
+
+var delHeadCell = function (headSetting, currLevel, orderNo) {
+    var tmpSetting = [];
+
+    var isNeedMinusLevel = false;
+    //只能删除顶层
+    for(var i=0;i<headSetting.length;i++){
+        if(currLevel == headSetting[i].currLevel && orderNo == headSetting[i].orderNo){
+            for(var j=0;j<headSetting[i].headInfo.nextLevelInfo.length;j++){
+                headSetting[i].headInfo.nextLevelInfo[j].currLevel = currLevel;
+                tmpSetting.push(JSON.parse(JSON.stringify(headSetting[i].headInfo.nextLevelInfo[j])));
+            }
+        }else{
+            if(headSetting[i].headInfo.nextLevelInfo.length == 0){
+                isNeedMinusLevel = true;
+            }
+            tmpSetting.push(JSON.parse(JSON.stringify(headSetting[i])));
+        }
+    }
+
+    //如果 删除后 存在 同levle没有合并的列 则需要降一级level;
+    if(isNeedMinusLevel){
+        for(var i=0;i<tmpSetting.length;i++){
+            tmpSetting[i].currLevel = (currLevel -1);
+            tmpSetting[i].orderNo = i;
+        }
+    }
+
+    return tmpSetting;
+
+};
+
+var reName = function (ct_name,oldName, currLevel, orderNo) {
+
+    console.log("rename "+ct_name+" "+oldName+" "+currLevel+" "+orderNo);
+
+    var newHeadName = setMergeHead(oldName);
+    if(newHeadName == null){
+        return;
+    }
+
+    var ctInfo = getCTInfo(ct_name);
+    if(ctInfo ==null){
+        return;
+    }
+    ct_ele = ctInfo.ct_ele;
+
+    ctInfo.ct_headSetting = modifyHeadName(ctInfo.ct_headSetting,currLevel,orderNo,newHeadName);
+
+    reFresh(ct_ele,ct_name,ctInfo.ct_headSetting);
+
+};
+
+var delHead = function (ct_name, currLevel, orderNo) {
+
+    var ctInfo = getCTInfo(ct_name);
+    if(ctInfo ==null){
+        return;
+    }
+    ct_ele = ctInfo.ct_ele;
+
+    var retValue = confirm("确定要删除吗？");
+    if(!retValue){
+        return 0;
+    }
+
+    ctInfo.ct_headSetting = delHeadCell(ctInfo.ct_headSetting,currLevel,orderNo);
+
+    ctInfo.ct_headSetting = reComputeLevelAndOrderNo(ctInfo.ct_headSetting,ctInfo.ct_headSetting[0].currLevel);
+
+    reFresh(ct_ele,ct_name,ctInfo.ct_headSetting);
+
+
+};
+
+var bindEvent = function (ct_name) {
+    var ctInfo = getCTInfo(ct_name);
+    if(ctInfo ==null){
+        return;
+    }
+    ct_ele = ctInfo.ct_ele;
+
+    var html = "<button class=\"btn btn-info ct-merger \" onclick=\"mergerHead('"+ct_name+"')\">合并</button>"+
+               "<button class=\"btn btn-info ct-reset ml10\" onclick=\"resetHead('"+ct_name+"')\">还原</button>";
+
+    ct_ele.find(".ct-btn").html("");
+    ct_ele.find(".ct-btn").append(html);
+
+    //ct_ele.find(".ct-merger").unbind("click");
+    //ct_ele.find(".ct-merger").click(function() {
+    //    console.log("merger click");
+    //    mergerHead();
+    //});
+    //ct_ele.find(".ct-reset").unbind("click");
+    //ct_ele.find(".ct-reset").click(function() {
+    //    console.log("reset click");
+    //    resetHead();
+    //});
 };
 //将表头配置转换为二维进行展示
 var transHeadSetting = function (headSetting,option,level,index) {
@@ -259,42 +422,59 @@ var transHeadSetting = function (headSetting,option,level,index) {
     return retOption;
 
 };
-var createTab = function(option){
-    var html ='<table class="ct" ct="ct" id="ct"><thead>';
 
-    //html += '<th width=\"'+option.rowHead.length*100+'px\" height=\"30px\" colspan="'+option.rowHead.length+'" ></th>';
 
-    var colCnt = 0;
-    var cnt = 0;
+var createTheadContent = function(option,ct_name){
+    var html="";
+
+
     for(var i=0;i<option.colHead.length;i++){
-        cnt = 0;
         html+= '<tr id="tr">';
         for(var j=0;j<option.colHead[i].length;j++){
             var thead = option.colHead[i][j];
             if(thead.colInfo == null){
-                html += '<th width=\"100px\" height=\"30px\" id=\"ch-'+i + thead.currLevel +'\" currLevel=\"'+thead.currLevel+'\" orderNo=\"'+thead.orderNo+'\" rowspan=\"'+thead.headInfo.rowspanNum+'\" colspan=\"'+thead.headInfo.colspanNum+'\"><div class=\"headdiv\" id=\"ch_'+i+'\" style="width:100%;height:100%">'+thead.headInfo.headName+'</div></th>';
+                html += '<th width=\"100px\" height=\"30px\" id=\"ch-'+i + thead.currLevel +'\" currLevel=\"'+thead.currLevel+'\" orderNo=\"'+thead.orderNo+'\" rowspan=\"'+thead.headInfo.rowspanNum+'\" colspan=\"'+thead.headInfo.colspanNum+'\"><div class=\"headdiv\" id=\"ch_'+i+'\" style="width:100%;height:100%">'+thead.headInfo.headName;
+                if(i == 0){
+                    html += '<span class=\"bttn fr glyphicon glyphicon-remove\" onclick=\"delHead(\''+ct_name+'\','+thead.currLevel+','+thead.orderNo+')\"></span>';
+                }
+                html +='<span class=\"bttn fr glyphicon glyphicon-edit\" onclick=\"reName(\''+ct_name+'\',\''+thead.headInfo.headName+'\','+thead.currLevel+','+thead.orderNo+')\"></span></div></th>';
             }else{
-                html += '<th width=\"100px\" height=\"30px\" colId=\"' + thead.colId +'\" currLevel=\"'+thead.currLevel+'\" orderNo=\"'+thead.orderNo+'\" rowspan=\"'+thead.headInfo.rowspanNum+'\" colspan=\"'+thead.headInfo.colspanNum+'\"><div class=\"headdiv\" id=\"ch_'+i+'\" style="width:100%;height:100%">'+thead.colInfo.colName+'</div></th>';
+                html += '<th width=\"100px\" height=\"30px\" colId=\"' + thead.colId +'\" currLevel=\"'+thead.currLevel+'\" orderNo=\"'+thead.orderNo+'\" rowspan=\"'+thead.headInfo.rowspanNum+'\" colspan=\"'+thead.headInfo.colspanNum+'\"><div class=\"headdiv\" id=\"ch_'+i+'\" style="width:100%;height:100%">'+thead.colInfo.colName+'<span class=\"bttn fr glyphicon glyphicon-edit\" onclick=\"reName(\''+ct_name+'\',\''+thead.colInfo.colName+'\','+thead.currLevel+','+thead.orderNo+')\"></span></div></th>';
             }
-            cnt += thead.headInfo.colspanNum;
-        }
-        if(cnt>colCnt){
-            colCnt = cnt;
         }
 
         html +='</tr>'
 
     }
+
+    return html;
+
+}
+
+var createTab = function(option,ct_name){
+    var html ='<table class="ct" ct="'+ct_name+'"><thead>';
+
+    //html += '<th width=\"'+option.rowHead.length*100+'px\" height=\"30px\" colspan="'+option.rowHead.length+'" ></th>';
+
+    html += createTheadContent(option,ct_name);
+
     html +='</thead><tbody>';
     html +='<tr height=\"30px\">';
-    //for(var i=0;i<option.rowHead.length;i++){
-    //    var chead = option.rowHead[i];
-    //    if(i<option.rowHead.length-1){
-    //        html += '<td width=\"100px\" height=\"30px\" head=\"head\" index=\"'+chead.orderNo+'\" id="rh-'+i+chead.colName+'"><div class=\"headdiv\" id=\"rh_'+i+'\"><span style="cursor:pointer">'+chead.colName+'</span></div></td>';
-    //    }else {
-    //        html += '<td width=\"100px\" height=\"30px\" head=\"head\" index=\"'+chead.orderNo+'\" id="rh-'+i+chead.colName+'"><div class=\"headdiv\" id=\"rh_'+i+'\" style="width:100%;height:100%"></div></td>';
-    //    }
-    //}
+
+
+    var cnt = 0;
+    var colCnt = 0;
+    for(var i=0;i<option.colHead.length;i++){
+        cnt = 0;
+        for(var j=0;j<option.colHead[i].length;j++){
+            var thead = option.colHead[i][j];
+            cnt += thead.headInfo.colspanNum;
+        }
+        if(cnt>colCnt){
+            colCnt = cnt;
+        }
+    }
+
     for(var k =0; k<colCnt;k++){
         html += '<td></td>'
     }
@@ -304,14 +484,50 @@ var createTab = function(option){
 
 };
 
-var loadData = function(param){
+var loadData = function(ct_name,dataList){
+    var ctInfo = getCTInfo(ct_name);
+    if(ctInfo ==null){
+        return;
+    }
+    var tmp_ele = ctInfo.ct_ele;
+
+    if(dataList.length == 0){
+        return;
+    }
+    var tmpHead = [];
+    var tmp_headSetting = getInitHeadSetting(ctInfo.ct_headSetting,tmpHead);
+
+    var html = '';
+
+    for(var i=0;i<dataList.length;i++) {
+        html += '<tr height=\"30px\">';
+        var rowDataInfo = dataList[i];
+        for (var j = 0; j < tmp_headSetting.length; j++) {
+            var tmpData = "--";
+            for (var k = 0; k < rowDataInfo.length; k++) {
+                if (tmp_headSetting[j].colInfo.colId == rowDataInfo[k].colId) {
+                    if(rowDataInfo[k].colValue !=null){
+                        tmpData = rowDataInfo[k].colValue;
+                    }
+                }
+            }
+
+            html += '<td>'+tmpData+'</td>'
+
+        }
+        html += '</tr>';
+    }
+
+    tmp_ele.find("tbody").html("");
+
+    tmp_ele.find("tbody").append(html);
 
 };
 
 var ShowSelected = function () {
     var isEmpty = true;
     //var tds = $("th,td", $("#ct"));
-    var tds = $("th", $("#ct"));
+    var tds = $("th", $(".ct"));
     var msg = "";
     tds.filter(".ui-selected").each(function(){
         msg += ("#" + (tds.index(this) + 1) + " ");
@@ -326,9 +542,28 @@ var ShowSelected = function () {
     }
 };
 
+var reFresh = function (ele,ct_name,headSetting) {
+    var tmpOption = [];
+    var tmpLevel = 0;
+    ct_headSetting = JSON.parse(JSON.stringify(headSetting));
+    if(headSetting.length>0){
+        tmpLevel =  headSetting[0].currLevel
+    }
+    var option = transHeadSetting(headSetting,tmpOption,tmpLevel,0);
+    console.log(JSON.stringify(option));
+    ct_option.colHead = option;
+    var headHtml = createTheadContent(ct_option,ct_name);
 
-var init = function(ele,headSetting){
-    console.log("custTable init");
+    ele.find("thead").html("");
+    ele.find("thead").append(headHtml);
+
+    ct_ele.find(".ct").selectable({stop: ShowSelected});
+
+
+};
+
+var init = function(ele,ct_name,headSetting){
+    console.log("custTable:"+ct_name+" init");
     ct_ele = ele;
     var tmpOption = [];
     var tmpLevel = 0;
@@ -339,12 +574,24 @@ var init = function(ele,headSetting){
     var option = transHeadSetting(headSetting,tmpOption,tmpLevel,0);
     console.log(JSON.stringify(option));
     ct_option.colHead = option;
-    var tabHtml = createTab(ct_option);
-    ele.html("");
-    ele.append(tabHtml);
 
-    $("#ct").selectable({stop: ShowSelected});
+    var tmpCt = {
+        ct_name:ct_name,
+        ct_ele:ele,
+        ct_headSetting:headSetting,
+        ct_option:ct_option
+    };
 
-    //绑定拖拽事件
-    bindEvent();
+    saveCTList(tmpCt);
+
+    var tabHtml = createTab(ct_option,ct_name);
+    ele.find(".custTable").html("");
+    ele.find(".custTable").append(tabHtml);
+
+
+    ele.find(".ct").selectable({stop: ShowSelected});
+
+
+    //绑定事件
+    bindEvent(ct_name);
 };

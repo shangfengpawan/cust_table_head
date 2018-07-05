@@ -76,5 +76,16 @@
     margin-bottom: 10px;
 }
 
-#ct th.ui-selecting { background: #40adfe; }
-#ct th.ui-selected  { background: #3e8dde; }
+.cust-tab .ml10{
+    margin-left: 10px;
+}
+
+.cust-tab .bttn:hover{
+    cursor:pointer;
+}
+
+.cust-tab .fr{
+    float:right;
+}
+.ct th.ui-selecting { background: #40adfe; }
+.ct th.ui-selected  { background: #3e8dde; }
