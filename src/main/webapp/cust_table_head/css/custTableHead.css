@@ -94,3 +94,25 @@
 .ct th {
     background: #a3dff6;
 }
+.ct-head{
+    width:100%;
+    overflow-x:hidden;
+}
+.ct-head .ct-head-i{
+    width:600px;
+}
+
+.ct-head .ct-head-e{
+    width:618px!important;
+    width:620px;
+}
+
+.ct-body{
+    width:100%;
+    height:300px;
+    overflow:auto;
+}
+
+.ct-body .ct-body-i{
+    width:600px;
+}

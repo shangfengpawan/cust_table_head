@@ -11,11 +11,11 @@ app.controller('homeCtrl', ['$rootScope','$scope', '$compile','$window','$timeou
         [
             {
                 colId:1,
-                colValue:2312
+                colValue:231222323232323232333333333333333
             },
             {
                 colId:2,
-                colValue:2362
+                colValue:'2362232322323232eeeeeeeeeeeeeeeeeeeeeeeee'
             },
             {
                 colId:3,
