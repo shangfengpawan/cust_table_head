@@ -359,6 +359,36 @@ var delHead = function (ct_name, currLevel, orderNo) {
 
 };
 
+var bindHeadEvent = function (ct_name) {
+    var ctInfo = getCTInfo(ct_name);
+    if(ctInfo ==null){
+        return;
+    }
+    ct_ele = ctInfo.ct_ele;
+
+    ct_ele.find(".rename").unbind("dblclick");
+    ct_ele.find(".rename").on("dblclick",function () {
+        var ele = $(this);
+        var pele = ele.parent().parent();
+        var tmpctname = pele.attr("ct_name");
+        var tmpcurrLevel = pele.attr("currLevel");
+        var tmporderNo = pele.attr("orderNo");
+        var tmpheadName = pele.attr("headName");
+        reName(tmpctname,tmpheadName,tmpcurrLevel,tmporderNo);
+        //console.log("rename ct_name"+tmpctname);
+    })
+
+    ct_ele.find(".delhead").unbind("dblclick");
+    ct_ele.find(".delhead").on("dblclick",function () {
+        var ele = $(this);
+        var pele = ele.parent().parent();
+        var tmpctname = pele.attr("ct_name");
+        var tmpcurrLevel = pele.attr("currLevel");
+        var tmporderNo = pele.attr("orderNo");
+        delHead(tmpctname,tmpcurrLevel,tmporderNo);
+    })
+};
+
 var bindEvent = function (ct_name) {
     var ctInfo = getCTInfo(ct_name);
     if(ctInfo ==null){
@@ -371,6 +401,8 @@ var bindEvent = function (ct_name) {
 
     ct_ele.find(".ct-btn").html("");
     ct_ele.find(".ct-btn").append(html);
+
+    bindHeadEvent(ct_name);
 
     //ct_ele.find(".ct-merger").unbind("click");
     //ct_ele.find(".ct-merger").click(function() {
@@ -433,13 +465,13 @@ var createTheadContent = function(option,ct_name){
         for(var j=0;j<option.colHead[i].length;j++){
             var thead = option.colHead[i][j];
             if(thead.colInfo == null){
-                html += '<th width=\"100px\" height=\"30px\" id=\"ch-'+i + thead.currLevel +'\" currLevel=\"'+thead.currLevel+'\" orderNo=\"'+thead.orderNo+'\" rowspan=\"'+thead.headInfo.rowspanNum+'\" colspan=\"'+thead.headInfo.colspanNum+'\"><div class=\"headdiv\" id=\"ch_'+i+'\" style="width:100%;height:100%">'+thead.headInfo.headName;
+                html += '<th width=\"100px\" height=\"30px\" id=\"ch-'+i + thead.currLevel +'\" ct_name=\"'+ct_name+'\" headName=\"'+thead.headInfo.headName+'\" currLevel=\"'+thead.currLevel+'\" orderNo=\"'+thead.orderNo+'\" rowspan=\"'+thead.headInfo.rowspanNum+'\" colspan=\"'+thead.headInfo.colspanNum+'\"><div class=\"headdiv\" id=\"ch_'+i+'\" style="width:100%;height:100%">'+thead.headInfo.headName;
                 if(i == 0){
-                    html += '<span class=\"bttn fr glyphicon glyphicon-remove\" onclick=\"delHead(\''+ct_name+'\','+thead.currLevel+','+thead.orderNo+')\"></span>';
+                    html += '<span class=\"bttn delhead fr glyphicon glyphicon-remove\" ></span>';
                 }
-                html +='<span class=\"bttn fr glyphicon glyphicon-edit\" onclick=\"reName(\''+ct_name+'\',\''+thead.headInfo.headName+'\','+thead.currLevel+','+thead.orderNo+')\"></span></div></th>';
+                html +='<span class=\"bttn rename fr glyphicon glyphicon-edit\" ></span></div></th>';
             }else{
-                html += '<th width=\"100px\" height=\"30px\" colId=\"' + thead.colId +'\" currLevel=\"'+thead.currLevel+'\" orderNo=\"'+thead.orderNo+'\" rowspan=\"'+thead.headInfo.rowspanNum+'\" colspan=\"'+thead.headInfo.colspanNum+'\"><div class=\"headdiv\" id=\"ch_'+i+'\" style="width:100%;height:100%">'+thead.colInfo.colName+'<span class=\"bttn fr glyphicon glyphicon-edit\" onclick=\"reName(\''+ct_name+'\',\''+thead.colInfo.colName+'\','+thead.currLevel+','+thead.orderNo+')\"></span></div></th>';
+                html += '<th width=\"100px\" height=\"30px\" ct_name=\"'+ct_name+'\" headName=\"'+thead.colInfo.colName+'\" colId=\"' + thead.colId +'\" currLevel=\"'+thead.currLevel+'\" orderNo=\"'+thead.orderNo+'\" rowspan=\"'+thead.headInfo.rowspanNum+'\" colspan=\"'+thead.headInfo.colspanNum+'\"><div class=\"headdiv\" id=\"ch_'+i+'\" style="width:100%;height:100%">'+thead.colInfo.colName+'<span class=\"bttn rename fr glyphicon glyphicon-edit\" ></span></div></th>';
             }
         }
 
@@ -451,8 +483,18 @@ var createTheadContent = function(option,ct_name){
 
 }
 
+var createFixHeadTab = function(ct_name){
+    var width = $("#"+ct_name)[0].clientWidth;
+    var html ='<table class="ct" ct="'+ct_name+'" id="fix_'+ct_name+'" style="position:absolute;top:0px;width:calc(100% - 50px)"><thead>';
+    html += $("#"+ct_name).find("thead").html();
+    html +='</thead>';
+    html +='</table>';
+
+    console.log("fix head "+html);
+    return html;
+}
 var createTab = function(option,ct_name){
-    var html ='<table class="ct" ct="'+ct_name+'"><thead>';
+    var html ='<table class="ct" ct="'+ct_name+'" id="'+ct_name+'"><thead>';
 
     //html += '<th width=\"'+option.rowHead.length*100+'px\" height=\"30px\" colspan="'+option.rowHead.length+'" ></th>';
 
@@ -557,7 +599,13 @@ var reFresh = function (ele,ct_name,headSetting) {
     ele.find("thead").html("");
     ele.find("thead").append(headHtml);
 
+    var fixHead = createFixHeadTab(ct_name);
+
+    ele.find(".custTable").append(fixHead);
+
     ct_ele.find(".ct").selectable({stop: ShowSelected});
+
+    bindHeadEvent(ct_name);
 
 
 };
@@ -585,8 +633,13 @@ var init = function(ele,ct_name,headSetting){
     saveCTList(tmpCt);
 
     var tabHtml = createTab(ct_option,ct_name);
+
     ele.find(".custTable").html("");
     ele.find(".custTable").append(tabHtml);
+
+    var fixHead = createFixHeadTab(ct_name);
+
+    ele.find(".custTable").append(fixHead);
 
 
     ele.find(".ct").selectable({stop: ShowSelected});
